@@ -5,14 +5,14 @@
     "email": "jonathan.max.annett@gmail.com"
   },
   "contributors": [],
-  "description": "newly created repo",
+  "description": "under development. check back later",
   "license": "MIT",
   "dependencies": {
+    "node-webcrypto-ossl": "^1.0.48"
   },
   "devDependencies": {},
   "scripts": {},
-  "keywords": [
-  ],
+  "keywords": [],
   "main": "index.js",
   "name": "string-diff-regex",
   "repository": {
