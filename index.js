@@ -227,6 +227,17 @@
                         enumerable: true
 
                     },
+                    removeEventListener : {
+                        value : function (e,fn) {
+                            if (typeof e==='string'&& typeof events[e] ==='object' &&typeof fn==='function') {
+                                var ix = events[e].indexOf(fn);
+                                if (ix<0)return;
+                                events[e].splice(ix,1);
+                            }
+                        },
+                        enumerable: true
+
+                    },
                     update : {
                         value : function (d,who,initial) {
                             if (d===null||initial && is_master) return;
