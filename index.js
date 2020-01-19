@@ -15,15 +15,15 @@
                 i,
                 l_a = a.length,
                 l_b = b.length,
-                end = l_a<= l_b ? l_a : l_b;
+                limit = l_a<= l_b ? l_a : l_b;
 
-                a=a.split('');
-                b=b.split('');
+                //a=a.split('');
+                //b=b.split('');
 
-                for (i=0;i<end;i++) {
+                for (i=0;i<limit;i++) {
                     if (a[i]!==b[i]) return i;
                 }
-                return end;
+                return limit;
             }
 
             // same as findFirstDiffFromStart but in reverse
@@ -35,15 +35,15 @@
                 i,
                 l_a=a.length,
                 l_b=b.length,
-                l = (l_a<=l_b) ? l_a : l_b;
-                a=a.split('');
-                b=b.split('');
+                limit = (l_a<=l_b) ? l_a : l_b;
+                //a=a.split('');
+                //b=b.split('');
                 l_a--;l_b--;
 
-                for (i=0;i<l;i++) {
+                for (i=0;i<limit;i++) {
                     if (a[l_a-i]!==b[l_b-i]) return i;
                 }
-                return l;
+                return limit;
             }
 
             function apply_diff(a,d,cb) {
@@ -55,6 +55,146 @@
                         return cb(b,hash);
                     }
                 });
+            }
+
+            function diff_same_length(a,b,h,l_a,l_b,start,end,retcheck) {
+                var i,del;
+                if (start===0) {
+                    if (end===0) {
+                        // pretty much entire string is diff
+                        return retcheck(['.*',b,h,"start===0,end===0"]);
+                    } else {
+                        // end of b matches a
+                        i = l_b-end;
+                        del=(l_a-end);
+                        return retcheck(['.{'+del+'}',b.substr(0,i),h,"start===0,end!==0"]);
+                    }
+                } else {
+
+                    if (end===0) {
+                        // start of b matches a
+                        i = (l_b-end)-1;
+                        return retcheck(['(?<=.{'+start+'}).*',b.substr(start),h,"start!==0,end===0"]);
+                    } else {
+                        // start and end of b matches a
+                       del = ((l_a-end)-start);
+                        return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,del),h,"start!==0,end!==0"]);
+                    }
+
+                }
+            }
+
+            function diff_grow(a,b,h,l_a,l_b,start,end,retcheck) {
+                var i,del;
+
+                if (start===0) {
+                    if (end===0) {
+                        // pretty much entire string is diff
+                        return retcheck(['.*',b,h,"diff_grow: start===0,end===0"]);
+                    } else {
+                        // end of b matches a
+                        i = (l_b-end)+(l_b-l_a);
+                        del=(l_a-end)+(l_b-l_a);
+                        return retcheck(['.{'+del+'}',b.substr(0,i),h,"diff_grow: start===0,end!==0"]);
+                    }
+                } else {
+                    if (end===0) {
+                        // start of b matches a
+                        return retcheck(['(?<=.{'+start+'}).*',b.substr(start),h,"diff_grow: start!==0,end===0"]);
+                    } else {
+                        // start and end of b matches a
+
+
+                        /*
+                          |<-------- a_end------->|
+                        a |<---start-->|<---del-->|<----end--->|
+                          |<-----------l_a-------------------->|
+
+                          |<-----------l_b------------------------------->|
+                        b |<---start-->|<--------------ins-->|<----end--->|
+                          |<----- b_end--------------------->|
+
+
+                        {    0123456789012345678901234
+                        "a":"one two insert xx three",
+                        "b":"one two insert xxx three",
+                        "d":["(?<=.{17}).{-2}","","ac11e4ad3c6118cfb9894901adfb0bb7da3bf5da","diff_grow: start!==0,end!==0"],"r":"one two insert xx three"}
+
+                                                876543210
+                            "a": "one two insert xx three",
+                            "b":"one two insert xxx three",
+
+
+                        l_a = 23
+                        l_b = 24
+                        start = 17
+                        end   = 8
+                        a_end = 23-8 = 15
+                        b_end = 24-8 = 16
+
+
+
+                        */
+
+                        var a_end = l_a-end;
+                        var b_end = l_b-end;
+
+                        del = Math.max(0,a_end - start);
+                        var ins = b_end - a_end;
+
+                        return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,ins),h,"diff_grow: start!==0,end!==0"]);
+                    }
+                }
+            }
+
+            function diff_shrink(a,b,h,l_a,l_b,start,end,retcheck){
+                var i,del;
+                if (start===0) {
+                    if (end===0) {
+                        // pretty much entire string is diff
+                        return retcheck(['.*',b,h,"diff_shrink: start===0,end===0"]);
+                    } else {
+                        // end of b matches a
+                        i = (l_b-end);
+                        del=(l_a-end);
+                        return retcheck(['.{'+del+'}',b.substr(0,i),h,"diff_shrink: start===0,end!==0"]);
+                    }
+                } else {
+                    if (end===0) {
+                        // start of b matches a
+                        return retcheck(['(?<=.{'+start+'}).*',b.substr(start),h,"diff_shrink: start!==0,end===0"]);
+                    } else {
+                        // start and end of b matches a
+
+
+                        /*
+                          |<-------- a_end----------->|
+                        a |<---start-->|<----del----->|<----end--->|
+                          |<-----------l_a------------------------>|
+
+                          |<-----------l_b------------------->|
+                        b |<---start-->|<--ins-->|<----end--->|
+                          |<----- b_end--------->|
+
+
+                        */
+
+
+                        var a_end = l_a-end;
+                        var b_end = l_b-end;
+
+                        del     = a_end < start ? 0 :  (a_end - start) - (b_end < start ? (b_end - start) :0);
+                        var ins = b_end < start ? 0 : l_b - (start+del+end);
+
+                        console.log({
+                            del,ins,start,end,a_end,b_end,l_a,l_b
+                        });
+
+                        return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,ins),h,"diff_shrink: start!==0,end!==0"]);
+
+
+                    }
+                }
             }
 
             function diff(a,b,h) {
@@ -79,77 +219,12 @@
                 end   = findFirstDiffFromEnd(a,b);
 
                 if (l_a===l_b) {
-                    if (start===0) {
-                        if (end===0) {
-                            // pretty much entire string is diff
-                            return retcheck(['.*',b,h,"start===0,end===0"]);
-                        } else {
-                            // end of b matches a
-                            i = l_b-end;
-                            del=(l_a-end);
-                            return retcheck(['.{'+del+'}',b.substr(0,i),h,"start===0,end!==0"]);
-                        }
-                    } else {
-                        if (end===0) {
-                            // start of b matches a
-                            i = (l_b-end)-1;
-                            return retcheck(['(?<=.{'+start+'}).*',b.substr(start),h,"start!==0,end===0"]);
-                        } else {
-                            // start and end of b matches a
-                           del = ((l_a-end)-start);
-                            return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,del),h,"start!==0,end!==0"]);
-                        }
-                    }
+                    return diff_same_length(a,b,h,l_a,l_b,start,end,retcheck);
                 } else {
                     if (l_a<l_b) {
-                        if (start===0) {
-                            if (end===0) {
-                                // pretty much entire string is diff
-                                return retcheck(['.*',b,h,"l_a<l_b, start===0,end===0"]);
-                            } else {
-                                // end of b matches a
-                                i = (l_b-end)+(l_b-l_a);
-                                del=(l_a-end)+(l_b-l_a);
-                                return retcheck(['.{'+del+'}',b.substr(0,i),h,"l_a<l_b, start===0,end!==0"]);
-                            }
-                        } else {
-                            if (end===0) {
-                                // start of b matches a
-                                return retcheck(['(?<=.{'+start+'}).*',b.substr(start),h,"l_a<l_b, start!==0,end===0"]);
-                            } else {
-                                // start and end of b matches a
-
-
-                                if (start+end > l_a) {
-                                    del=(l_b-end)-start;
-                                    return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,del+(l_b-l_a)),h,"l_a<l_b(a) ,start!==0,end!==0"]);
-                                } else {
-                                    del=(l_a-end)-start;
-                                    return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,del+(l_b-l_a)),h,"l_a<l_b(b),start!==0,end!==0"]);
-                                }
-                            }
-                        }
+                        return diff_grow(a,b,h,l_a,l_b,start,end,retcheck);
                     } else {
-                        if (start===0) {
-                            if (end===0) {
-                                // pretty much entire string is diff
-                                return retcheck(['.*',b,h,"l_a>l_b, start===0,end===0"]);
-                            } else {
-                                // end of b matches a
-                                i = (l_b-end);
-                                del=(l_a-end);
-                                return retcheck(['.{'+del+'}',b.substr(0,i),h,"l_a>l_b, start===0,end!==0"]);
-                            }
-                        } else {
-                            if (end===0) {
-                                // start of b matches a
-                                return retcheck(['(?<=.{'+start+'}).*',b.substr(start),h,"l_a>l_b, start!==0,end===0"]);
-                            } else {
-                                // start and end of b matches a
-                                del = ((l_a-end)-start);
-                                return retcheck(['(?<=.{'+start+'}).{'+(del)+'}',b.substr(start,del-(l_a-l_b)),h,"l_a>l_b,start!==0,end!==0",start,end]);
-                            }
-                        }
+                        return diff_shrink(a,b,h,l_a,l_b,start,end,retcheck);
                     }
                 }
             }
