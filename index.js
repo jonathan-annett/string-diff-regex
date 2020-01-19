@@ -1,16 +1,10 @@
 (function(isNodeJS){
     /*polyfill wrapper to map window.crypto.subtle --> subtle (even in node.js)*/
-    (function(exports,subtle,hex) {
-
-            // sha1 hash for integrity checks
-            function sha1(str) {
-              return subtle.digest(
-                  "SHA-1",
-                  new TextEncoder("utf-8").encode(str))
-                    .then(function (hash) {
-                        return hex(hash);
-                    });
-            }
+    (function(
+        exports, // <<< maps to window.stringDiff / module.exports
+        subtle,  // <<< window.crypto.subtle
+        sha1     // sha1 hash for integrity checks
+        ) {
 
             // null - both strings are identical
             // returns index of first different char
@@ -56,7 +50,7 @@
                 if ( !d || d.length<2) return typeof cb==='function'?cb(a):a;
                 var b = a.replace(new RegExp(d[0],'s'),d[1]);
                 if (typeof cb!=='function') return b;
-                return sha1(b).then(function(hash) {
+                return sha1(b,function(hash) {
                     if (hash===d[2]) {
                         return cb(b,hash);
                     }
@@ -201,7 +195,7 @@
                         set : function (value) {
                             emit("change",[value,"set"]);
 
-                            sha1(value).then(function(hash) {
+                            sha1(value,function(hash) {
                                 emit(
                                     "diff",
                                     [currentValue],
@@ -223,7 +217,7 @@
                             if (typeof e==='string'&& typeof events[e] ==='object' &&typeof fn==='function') {
                                 if (e==="diff") {
                                     fn.currentValue=currentValue;
-                                    sha1(currentValue).then(function(hash) {
+                                    sha1(currentValue,function(hash) {
                                         fn(['.*',currentValue,hash],self.update,true);
                                     });
                                 }
@@ -260,7 +254,7 @@
 
                 if (typeof listener==='function') {
                     listener.currentValue=initialValue;
-                    sha1(initialValue).then(function(hash) {
+                    sha1(initialValue,function(hash) {
                         listener(['.*',initialValue,hash],self.update,true);
                     });
                     events.diff.push(listener);
@@ -347,43 +341,57 @@
                  }
 
             exports.diffPump = diffPump;
-            
+
             exports.utils = {
                 apply_diff : apply_diff,
                 diff       : diff,
                 selftest   : selftest,
-                sha1       : function (str,cb) {
-                    sha1(str).then(cb);
-                }
+                sha1       : sha1
             };
-
-            exports.utils.sha1.promise = sha1;
 
 
     })( /*exports*/        isNodeJS ? module.exports : (window.stringDiff={}),
         /*window_cryptro*/ isNodeJS ? require("./subtle-window.js")().crypto.subtle : window.crypto.subtle,
-        /*hex*/            isNodeJS ? hexNode : hexBrowser
+        /*sha1*/           isNodeJS ? sha1Node ()  : sha1Browser()
     );
 
-    function hexBrowser(buffer) {
-      var hexCodes = [];
-      var view = new DataView(buffer);
-      for (var i = 0; i < view.byteLength; i += 4) {
-        // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
-        var value = view.getUint32(i)
-        // toString(16) will give the hex representation of the number without padding
-        var stringValue = value.toString(16)
-        // We use concatenation and slice for padding
-        var padding = '00000000'
-        var paddedValue = (padding + stringValue).slice(-padding.length)
-        hexCodes.push(paddedValue);
-      }
-
-      // Join all the hex strings into one
-      return hexCodes.join("");
+    function sha1Browser() {
+        return function sha1(str,cb) {
+            sha1BrowserPromise(str).then(cb);
+        };
+        function sha1BrowserPromise(str) {
+          return window.crypto.subtle.digest(
+              "SHA-1",
+              new TextEncoder("utf-8").encode(str))
+                .then(function (hash) {
+                    return hexBrowser(hash);
+                });
+        }
+        function hexBrowser(buffer) {
+            var hexCodes = [];
+            var view = new DataView(buffer);
+            for (var i = 0; i < view.byteLength; i += 4) {
+              // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
+              var value = view.getUint32(i)
+              // toString(16) will give the hex representation of the number without padding
+              var stringValue = value.toString(16)
+              // We use concatenation and slice for padding
+              var padding = '00000000'
+              var paddedValue = (padding + stringValue).slice(-padding.length)
+              hexCodes.push(paddedValue);
+            }
+            // Join all the hex strings into one
+          return hexCodes.join("");
+        }
     }
-    function hexNode(buffer) {
-        return Buffer.from(buffer).toString("hex");
+
+    function sha1Node () {
+        var crypto = require('crypto');
+        return function sha1 (str,cb) {
+              var shasum = crypto.createHash('sha1');
+              shasum.update(str);
+              setImmediate(cb,shasum.digest('hex'));
+        };
     }
 
 })(typeof process==='object' && typeof module==='object' );
