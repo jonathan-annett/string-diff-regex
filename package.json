@@ -7,9 +7,7 @@
   "contributors": [],
   "description": "very basic string diff mechnanism, designed to detected keystroke by keystroke changes",
   "license": "MIT",
-  "dependencies": {
-    "node-webcrypto-ossl": "^1.0.48"
-  },
+  "dependencies": {},
   "devDependencies": {},
   "scripts": {},
   "keywords": [],
