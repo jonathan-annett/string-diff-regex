@@ -186,10 +186,6 @@
                         del     = a_end < start ? 0 :  (a_end - start) - (b_end < start ? (b_end - start) :0);
                         var ins = b_end < start ? 0 : l_b - (start+del+end);
 
-                        console.log({
-                            del,ins,start,end,a_end,b_end,l_a,l_b
-                        });
-
                         return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,ins),h,"diff_shrink: start!==0,end!==0"]);
 
 
@@ -201,7 +197,7 @@
                 var retcheck=function(d) {
                     var r=apply_diff(a,d);
                     if (r!==b) {
-                        console.log("qc check fails:"+JSON.stringify({a,b,d,r}));
+                        console.log("qc check fails:"+JSON.stringify({a:a,b:b,d:d,r:r}));
                         return ['.*',b,h];
                     }
                     //console.log("qc check passes:"+JSON.stringify({a,b,d,r}));
@@ -458,12 +454,12 @@
             var view = new DataView(buffer);
             for (var i = 0; i < view.byteLength; i += 4) {
               // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
-              var value = view.getUint32(i)
+              var value = view.getUint32(i);
               // toString(16) will give the hex representation of the number without padding
-              var stringValue = value.toString(16)
+              var stringValue = value.toString(16);
               // We use concatenation and slice for padding
-              var padding = '00000000'
-              var paddedValue = (padding + stringValue).slice(-padding.length)
+              var padding = '00000000';
+              var paddedValue = (padding + stringValue).slice(-padding.length);
               hexCodes.push(paddedValue);
             }
             // Join all the hex strings into one
