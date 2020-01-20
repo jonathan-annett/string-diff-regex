@@ -236,6 +236,16 @@
                     diff   : []
                 };
 
+                var getSenders = function (fromPool,eventName) {
+                    return fromPool.filter(function(sender){
+                        if (typeof sender==='object') {
+                            return events.diff.indexOf(sender[eventName])>=0;
+                        }
+
+                        return false;
+                    });
+                };
+
 
                 var emit= function(ev,args,wrap,who) {
                     var hoi_polloi_args=who?args.concat([who]):args;
@@ -250,11 +260,6 @@
                         }
                     });
                 };
-
-
-
-
-
 
 
                 Object.defineProperties (self,{
@@ -331,6 +336,10 @@
                         },
                         enumerable: true
                     },
+                    connections : {
+                        value : getSenders,
+                        enumerable: true
+                    }
                 });
 
                 if (typeof listener==='function') {
