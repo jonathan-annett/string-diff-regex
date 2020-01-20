@@ -2,7 +2,6 @@
     /*polyfill wrapper to map window.crypto.subtle --> subtle (even in node.js)*/
     (function(
         exports, // <<< maps to window.stringDiff / module.exports
-        subtle,  // <<< window.crypto.subtle
         sha1     // sha1 hash for integrity checks
         ) {
 
@@ -433,7 +432,6 @@
 
 
     })( /*exports*/        isNodeJS ? module.exports : (window.stringDiff={}),
-        /*window_cryptro*/ isNodeJS ? require("./subtle-window.js")().crypto.subtle : window.crypto.subtle,
         /*sha1*/           isNodeJS ? sha1Node ()  : sha1Browser()
     );
 
