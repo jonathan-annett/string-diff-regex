@@ -1,9 +1,3 @@
-console.log(global);
-console.log('this===global',this===global);
-console.log('exports===global',exports===global);
-console.log('module.exports===global',module.exports===global);
-
-
 (function(isNodeJS){
     /*polyfill wrapper to map window.crypto.subtle --> subtle (even in node.js)*/
     (function(
