@@ -7,7 +7,9 @@
   "contributors": [],
   "description": "very basic string diff mechnanism, designed to detected keystroke by keystroke changes",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "js-sha1": "^0.6.0"
+  },
   "devDependencies": {},
   "scripts": {},
   "keywords": [],

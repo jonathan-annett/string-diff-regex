@@ -1,7 +1,13 @@
+console.log(global);
+console.log('this===global',this===global);
+console.log('exports===global',exports===global);
+console.log('module.exports===global',module.exports===global);
+
+
 (function(isNodeJS){
     /*polyfill wrapper to map window.crypto.subtle --> subtle (even in node.js)*/
     (function(
-        exports, // <<< maps to window.stringDiff / module.exports
+        exports, // <<< maps to window.stringDiffRegex / module.exports
         sha1     // sha1 hash for integrity checks
         ) {
 
@@ -439,48 +445,63 @@
                 sha1       : sha1
             };
 
+            if (isNodeJS) {
+         }
 
-    })( /*exports*/        isNodeJS ? module.exports : (window.stringDiff={}),
+
+    })( /*exports*/        isNodeJS ? module.exports : (window.stringDiffRegex={}),
         /*sha1*/           isNodeJS ? sha1Node ()  : sha1Browser()
     );
 
-    function sha1Browser() {
-        return function sha1(str,cb) {
-            sha1BrowserPromise(str).then(cb);
-        };
-        function sha1BrowserPromise(str) {
-          return window.crypto.subtle.digest(
-              "SHA-1",
-              new TextEncoder("utf-8").encode(str))
-                .then(function (hash) {
-                    return hexBrowser(hash);
-                });
-        }
-        function hexBrowser(buffer) {
-            var hexCodes = [];
-            var view = new DataView(buffer);
-            for (var i = 0; i < view.byteLength; i += 4) {
-              // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
-              var value = view.getUint32(i);
-              // toString(16) will give the hex representation of the number without padding
-              var stringValue = value.toString(16);
-              // We use concatenation and slice for padding
-              var padding = '00000000';
-              var paddedValue = (padding + stringValue).slice(-padding.length);
-              hexCodes.push(paddedValue);
+        function sha1SubtleBrowser() {
+            return function sha1(str,cb) {
+                if (typeof cb==='function') return sha1BrowserPromise(str).then(cb);
+            };
+            function sha1BrowserPromise(str) {
+              return window.crypto.subtle.digest(
+                  "SHA-1",
+                  new TextEncoder("utf-8").encode(str))
+                    .then(function (hash) {
+                        return hexBrowser(hash);
+                    });
             }
-            // Join all the hex strings into one
-          return hexCodes.join("");
+            function hexBrowser(buffer) {
+                var hexCodes = [];
+                var view = new DataView(buffer);
+                for (var i = 0; i < view.byteLength; i += 4) {
+                  // Using getUint32 reduces the number of iterations needed (we process 4 bytes each time)
+                  var value = view.getUint32(i);
+                  // toString(16) will give the hex representation of the number without padding
+                  var stringValue = value.toString(16);
+                  // We use concatenation and slice for padding
+                  var padding = '00000000';
+                  var paddedValue = (padding + stringValue).slice(-padding.length);
+                  hexCodes.push(paddedValue);
+                }
+                // Join all the hex strings into one
+              return hexCodes.join("");
+            }
         }
-    }
 
-    function sha1Node () {
-        var crypto = require('crypto');
-        return function sha1 (str,cb) {
-              var shasum = crypto.createHash('sha1');
-              shasum.update(str);
-              setImmediate(cb,shasum.digest('hex'));
-        };
-    }
+        function sha1Browser() {
 
-})(typeof process==='object' && typeof module==='object' );
+            return typeof window.sha1==='function' ? sha1Wrap : sha1SubtleBrowser();
+
+            function sha1Wrap(str,cb) {
+                var hex = window.sha1(str);
+                return (typeof cb==='function') ? cb(hex) : hex;
+            }
+
+        }
+
+        function sha1Node () {
+            var crypto = require('crypto');
+            return function sha1 (str,cb) {
+                  var shasum = crypto.createHash('sha1');
+                  shasum.update(str);
+                  var hex = shasum.digest('hex');
+                  return typeof cb==='function' ? setImmediate(cb,hex) : hex;
+            };
+        }
+
+    })(typeof process==='object' && typeof module==='object' );
