@@ -52,6 +52,8 @@
                 return sha1(b,function(hash) {
                     if (hash===d[2]) {
                         return cb(b,hash);
+                    } else {
+                        console.log({apply_diff:{got:d[2],expected:hash}});
                     }
                 });
             }
