@@ -115,26 +115,6 @@
                     b |<---start-->|<--------------ins-->|<----end--->|
                       |<----- b_end--------------------->|
 
-
-                    {    0123456789012345678901234
-                    "a":"one two insert xx three",
-                    "b":"one two insert xxx three",
-                    "d":["(?<=.{17}).{-2}","","ac11e4ad3c6118cfb9894901adfb0bb7da3bf5da","diff_grow: start!==0,end!==0"],"r":"one two insert xx three"}
-
-                                            876543210
-                        "a": "one two insert xx three",
-                        "b":"one two insert xxx three",
-
-
-                    l_a = 23
-                    l_b = 24
-                    start = 17
-                    end   = 8
-                    a_end = 23-8 = 15
-                    b_end = 24-8 = 16
-
-
-
                     */
                     
                     if (l_a===start) {
@@ -146,12 +126,14 @@
                         return retcheck(['(?<=.{0}).{0}',b.substr(0-end),h,"diff_grow: start!==0,end!==0,l_a===end"]);
                     }
 
-                    var a_end = l_a-end;
-                    var b_end = l_b-end;
-
-                    del = Math.max(0,a_end - start);
-                    var ins = b_end - start;
-
+                    del     = l_a-(start+end) ;
+                    var ins = l_b-(start+end) ;
+                    
+                    if (del<0) {
+                        start += del;
+                        ins   -= del;
+                        del    = 0;
+                    }
                     return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,ins),h,"diff_grow: start!==0,end!==0"]);
                 }
             }
@@ -199,15 +181,9 @@
 
                     */
                     
-                   
-
-
                     var a_end = l_a-end;
                     var b_end = l_b-end;
 
-                    //del     = a_end < start ? (start-a_end)+1  :  (a_end - start) - (b_end < start ? (b_end - start) :0);
-                    //var ins = b_end < start ? 0 : l_b - (start+del+end);
-                    
                     del =   a_end-start;
                     var ins = b_end-start;
 
@@ -467,8 +443,8 @@
 
         if (isNodeJS) {
                
-            var test = {"a":"\nconsole.log(\"this is input 2\");\n\nfunction someFile4(inject){\"input4.js\";}\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n","b":"\nconsole.log(\"this is input 2\");\n\nfunction someFile4(inject){\"input4.js\";}\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n\n\n\n","d":["(?<=.{124}).{0}","\n\n","19ab83ddd861fbccf14d1c64df6036660cd9fcb1","diff_grow: start!==0,end!==0"],"r":"\nconsole.log(\"this is input 2\");\n\nfunction someFile4(inject){\"input4.js\";}\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n\n\n"}
-            
+            var test = {"a":"console.log(\"this is input 2\");\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n","b":"console.log(\"this is input 2\");\n\nfunction someFile4(inject){\"input4.js\";}\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n","d":["(?<=.{50}).{0}","4(inject){\"input4.js\";}","e56663223081edf31df6603ec8564e59cef24ff9","diff_grow: start!==0,end!==0"],"r":"console.log(\"this is input 2\");\n\nfunction someFile4(inject){\"input4.js\";}8(inject){\"subdir/input8.js\";}\n"};
+
             diff(test.a,test.b);            
      }
 
