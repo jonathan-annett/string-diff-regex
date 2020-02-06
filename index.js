@@ -184,7 +184,7 @@
                         var a_end = l_a-end;
                         var b_end = l_b-end;
 
-                        del     = a_end < start ? 0 :  (a_end - start) - (b_end < start ? (b_end - start) :0);
+                        del     = a_end < start ? (start-a_end)+1 :  (a_end - start) - (b_end < start ? (b_end - start) :0);
                         var ins = b_end < start ? 0 : l_b - (start+del+end);
 
                         return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,ins),h,"diff_shrink: start!==0,end!==0"]);
