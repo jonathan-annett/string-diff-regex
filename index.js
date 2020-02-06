@@ -181,13 +181,15 @@
 
                     */
                     
-                    var a_end = l_a-end;
-                    var b_end = l_b-end;
+                    del     = l_a-(start+end) ;
+                    var ins = l_b-(start+end) ;
+                    
+                    var txt = ins < 0 ? '' : b.substr(start,ins);
+                    if (ins < 0) {
+                        del -= ins;
+                    }
 
-                    del =   a_end-start;
-                    var ins = b_end-start;
-
-                    return retcheck(['(?<=.{'+start+'}).{'+del+'}',b.substr(start,ins),h,"diff_shrink: start!==0,end!==0"]);
+                    return retcheck(['(?<=.{'+start+'}).{'+del+'}',txt,h,"diff_shrink: start!==0,end!==0"]);
 
 
                 }
@@ -443,7 +445,7 @@
 
         if (isNodeJS) {
                
-            var test = {"a":"console.log(\"this is input 2\");\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n","b":"console.log(\"this is input 2\");\n\nfunction someFile4(inject){\"input4.js\";}\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n","d":["(?<=.{50}).{0}","4(inject){\"input4.js\";}","e56663223081edf31df6603ec8564e59cef24ff9","diff_grow: start!==0,end!==0"],"r":"console.log(\"this is input 2\");\n\nfunction someFile4(inject){\"input4.js\";}8(inject){\"subdir/input8.js\";}\n"};
+            var test = {"a":"console.log(\"this is input 2\");\n\nfunction someFile4(inject){\"input4.js\";}\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n","b":"console.log(\"this is input 2\");\nfunction someFile8(inject){\"subdir/input8.js\";}\n","d":["(?<=.{32}).{42}","","7631667a6026fae23294b9a0a762d2d8cd4254e2","diff_shrink: start!==0,end!==0"],"r":"console.log(\"this is input 2\");\n\nfunction someFile8(inject){\"subdir/input8.js\";}\n"};
 
             diff(test.a,test.b);            
      }
