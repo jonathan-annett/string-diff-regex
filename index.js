@@ -328,7 +328,10 @@
                                 "diff",
                                 [currentValue],
                                 function(fn){
-                                    if (who===fn) return false;
+                                    if (who===fn) {
+                                        fn.currentValue = currentValue;
+                                        return false;
+                                    }
                                     var d = diff(fn.currentValue,currentValue,currentHash);
                                     fn.currentValue = currentValue;
                                     return [d];
