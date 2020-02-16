@@ -24,12 +24,50 @@
             }
             return limit;
         }
+        
+        // async version of findFirstDiffFromStart(a,b)
+        function asyncFindFirstDiffFromStart(a,b,cb,steps,delayInt) {
+            var 
+            tmr,abort=function(){ if (tmr) clearTimeout(tmr); tmr=undefined;};
+            delayInt=delayInt||0;
+            if (a===b) {
+                tmr=setTimeout(cb,delayInt,null);
+                return abort;
+            }
+            steps=steps||512;
+            var
+            l_a = a.length,
+            l_b = b.length,
+            limit = l_a<= l_b ? l_a : l_b,
+
+            asyncFor=function(i) {
+               tmr=undefined;
+               var
+               this_limit=i+steps,
+               partial=this_limit<limit;
+               if (!partial) this_limit=limit;
+               
+               for (;i<this_limit;i++) {
+                   if (a[i]!==b[i]) return cb(i);
+               } 
+               if (partial) {
+                   return (tmr = setTimeout(asyncFor,delayInt,this_limit));
+               }
+               return cb(limit);
+
+            };
+            
+            tmr = setTimeout(asyncFor,delayInt,0);
+            return abort;
+            
+        }
 
         // same as findFirstDiffFromStart but in reverse
         // note: if last char of both strings are different, regardless of either length,
         // return value is 0 (ie not the string length)
-        function findFirstDiffFromEnd(a,b) {
-            if (a===b) return null;
+        function findFirstDiffFromEnd(a,b,from) {
+            if (a===b||from===null) return null;
+            from=from||0;
             var
             i,
             l_a=a.length,
@@ -38,11 +76,53 @@
             //a=a.split('');
             //b=b.split('');
             l_a--;l_b--;
-
+            limit-=from;
             for (i=0;i<limit;i++) {
                 if (a[l_a-i]!==b[l_b-i]) return i;
             }
             return limit;
+        }
+        
+        // async version of findFirstDiffFromEnd(a,b,from) 
+        function asyncFindFirstDiffFromEnd(a,b,from,cb,steps,delayInt) {
+            var 
+            tmr,abort=function(){ if (tmr) clearTimeout(tmr); tmr=undefined;};
+            delayInt=delayInt||0;
+            if (a===b||from===null) {
+                tmr=setTimeout(cb,delayInt,null);
+                return abort;
+            }
+            from=from||0;
+            steps=steps||512;
+            var
+            l_a=a.length,
+            l_b=b.length,
+            limit = (l_a<=l_b) ? l_a : l_b;
+            //a=a.split('');
+            //b=b.split('');
+            l_a--;l_b--;
+            limit-=from;
+            var
+            asyncFor=function(i) {
+               tmr=undefined;
+               var
+               this_limit=i+steps,
+               partial=this_limit<limit;
+               if (!partial) this_limit=limit;
+               
+               for (;i<this_limit;i++) {
+                   if (a[l_a-i]!==b[l_b-i]) return cb(i);
+               }
+               
+               if (partial) {
+                   return (tmr = setTimeout(asyncFor,delayInt,this_limit));
+               }
+               return cb(limit);
+
+            };
+            
+            tmr = setTimeout(asyncFor,delayInt,0);
+            return abort;
         }
 
         function apply_diff(a,d,cb) {
@@ -50,7 +130,7 @@
             var b = a.replace(new RegExp(d[0],'s'),d[1]);
             if (typeof cb!=='function') return b;
             return sha1(b,function(hash) {
-                if (hash===d[2]) {
+                if (cb.force||hash===d[2]) {
                     return cb(b,hash);
                 } else {
                     console.log({apply_diff:{got:d[2],expected:hash}});
@@ -210,12 +290,10 @@
                 return retcheck(null);
             }
             var
-            i,
-            del,
             l_a=a.length,
             l_b=b.length,
             start = findFirstDiffFromStart(a,b),
-            end   = findFirstDiffFromEnd(a,b);
+            end   = findFirstDiffFromEnd(a,b,start);
 
             if (l_a===l_b) {
                 return diff_same_length(a,b,h,l_a,l_b,start,end,retcheck);
@@ -227,7 +305,48 @@
                 }
             }
         }
-
+        
+        function asyncDiff(a,b,h,cb) {
+            var retcheck=function(d) {
+                var diff_check=function(r,hash){
+                    if (r!==b) {
+                        console.log("qc check fails:"+JSON.stringify({a:a,b:b,d:d,r:r}));
+                        return cb(['.*',b,h]);
+                    }
+                    //console.log("qc check passes:"+JSON.stringify({a,b,d,r}));
+                    return cb(!!d?d.slice(0,3):d);                   
+                };
+                diff_check.force=true;
+                return apply_diff(a,d,diff_check);
+            };
+            if (a===b) {
+                return retcheck(null);
+            }
+            var
+            l_a=a.length,
+            l_b=b.length,
+            steps=Math.min(l_a+l_b,2048),// ie upto 2kb don't use steps
+            delayInt=l_a+l_b<4096?0:50;
+            
+            asyncFindFirstDiffFromStart(a,b,steps,delayInt,function(start){
+                asyncFindFirstDiffFromEnd(a,b,start,steps,delayInt,function(end){
+                    if (l_a===l_b) {
+                        return diff_same_length(a,b,h,l_a,l_b,start,end,retcheck);
+                    } else {
+                        if (l_a<l_b) {
+                            return diff_grow(a,b,h,l_a,l_b,start,end,retcheck);
+                        } else {
+                            return diff_shrink(a,b,h,l_a,l_b,start,end,retcheck);
+                        }
+                    }
+                });
+            });
+            
+           
+            
+        }
+        
+        
         function diffPump(initialValue,listener,master) {
             var is_master = !!master;
             var self = {};
@@ -255,10 +374,20 @@
                 var hoi_polloi_args=who?args.concat([who]):args;
                 events[ev].forEach(function(fn){
                     if (typeof wrap==='function') {
+                        /*
                         var use_args = wrap(fn,args);
                         if (use_args) {
                            fn.apply(this,who?use_args.concat([who]):use_args);
                         }
+                        */
+                        
+                        wrap(fn,args,function(use_args){
+                            if (use_args) {
+                               fn.apply(this,who?use_args.concat([who]):use_args);
+                            }
+                        });
+                        
+                        
                     } else {
                         fn.apply(this,hoi_polloi_args);
                     }
@@ -278,11 +407,16 @@
                             emit(
                                 "diff",
                                 [currentValue],
-                                function(fn){
-                                var d = diff(fn.currentValue,value,hash);
-                                fn.currentValue = value;
-                                return [d];
-                            },
+                                function(fn,cb){
+                                        /*var d = diff(fn.currentValue,value,hash);
+                                        fn.currentValue = value;
+                                        cb([d]);*/
+                                        asyncDiff(fn.currentValue,value,hash,function(d){
+                                            fn.currentValue = value;
+                                            cb([d]);
+                                        });
+                                        
+                                },
                                 self.update
                             );
                             currentValue = value;
@@ -327,14 +461,21 @@
                             emit(
                                 "diff",
                                 [currentValue],
-                                function(fn){
+                                function(fn,cb){
                                     if (who===fn) {
                                         fn.currentValue = currentValue;
                                         return false;
                                     }
+                                    /*
                                     var d = diff(fn.currentValue,currentValue,currentHash);
                                     fn.currentValue = currentValue;
-                                    return [d];
+                                    return cb([d]);*/
+                                    
+                                    asyncDiff(fn.currentValue,currentValue,currentHash,function(d){
+                                        fn.currentValue = currentValue;
+                                        return cb([d]);
+                                    });
+                                    
                                 },
                                 self.update
                             );
