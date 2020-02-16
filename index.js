@@ -381,7 +381,7 @@
                         }
                         */
                         
-                        wrap(fn,args,function(use_args){
+                        wrap(fn,function(use_args){
                             if (use_args) {
                                fn.apply(this,who?use_args.concat([who]):use_args);
                             }
