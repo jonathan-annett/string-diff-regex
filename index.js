@@ -328,8 +328,8 @@
             steps=Math.min(l_a+l_b,2048),// ie upto 2kb don't use steps
             delayInt=l_a+l_b<4096?0:50;
             
-            asyncFindFirstDiffFromStart(a,b,steps,delayInt,function(start){
-                asyncFindFirstDiffFromEnd(a,b,start,steps,delayInt,function(end){
+            asyncFindFirstDiffFromStart(a,b,function(start){
+                asyncFindFirstDiffFromEnd(a,b,start,function(end){
                     if (l_a===l_b) {
                         return diff_same_length(a,b,h,l_a,l_b,start,end,retcheck);
                     } else {
@@ -339,8 +339,8 @@
                             return diff_shrink(a,b,h,l_a,l_b,start,end,retcheck);
                         }
                     }
-                });
-            });
+                },steps,delayInt);
+            },steps,delayInt);
             
            
             
