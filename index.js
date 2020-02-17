@@ -2,7 +2,8 @@
 /*polyfill wrapper to map window.crypto.subtle --> subtle (even in node.js)*/
 (function(
     exports, // <<< maps to window.stringDiffRegex / module.exports
-    sha1     // sha1 hash for integrity checks
+    sha1,    // sha1 hash for integrity checks,
+    perf_now // performance timing tool
     ) {
 
         // null - both strings are identical
@@ -373,7 +374,9 @@
             var emit= function(ev,args,wrap,who) {
                 var hoi_polloi_args=who?args.concat([who]):args;
                 events[ev].forEach(function(fn){
+                    
                     if (typeof wrap==='function') {
+                        
                         /*
                         var use_args = wrap(fn,args);
                         if (use_args) {
@@ -391,6 +394,7 @@
                     } else {
                         fn.apply(this,hoi_polloi_args);
                     }
+                    
                 });
             };
 
@@ -584,7 +588,8 @@
             apply_diff : apply_diff,
             diff       : diff,
             selftest   : selftest,
-            sha1       : sha1
+            sha1       : sha1,
+            perf_now   : perf_now(100)
         };
 
         if (isNodeJS) {
@@ -596,7 +601,8 @@
 
 
 })( /*exports*/        isNodeJS ? module.exports : (window.stringDiffRegex={}),
-    /*sha1*/           isNodeJS ? sha1Node ()  : sha1Browser()
+    /*sha1*/           isNodeJS ? sha1Node ()  : sha1Browser(),
+    /*perf_now*/       isNodeJS ? perfNode     : perfBrowser
 );
 
     function sha1SubtleBrowser() {
@@ -649,5 +655,10 @@
               return typeof cb==='function' ? setImmediate(cb,hex) : hex;
         };
     }
+    
+    
+    function perfNode   (sample_size) { return require("perf_now_time")(true)(sample_size); }
+    function perfBrowser(sample_size) { return window.performance_now(true)(sample_size); }
 
-})(typeof process==='object' && typeof module==='object' );
+}
+)(typeof process==='object' && typeof module==='object' );

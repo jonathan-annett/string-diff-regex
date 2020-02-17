@@ -8,7 +8,8 @@
   "description": "very basic string diff mechnanism, designed to detected keystroke by keystroke changes",
   "license": "MIT",
   "dependencies": {
-    "js-sha1": "^0.6.0"
+    "js-sha1": "^0.6.0",
+    "perf_now_time": "github:jonathan-annett/perf_now_time"
   },
   "devDependencies": {},
   "scripts": {},
