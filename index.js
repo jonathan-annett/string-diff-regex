@@ -1,13 +1,17 @@
 /*jshint maxerr: 10000 */
-
-
+/*global define*/
 (function(/*node>>>*/isNodeJS/*<<<node*/ ){
 /*polyfill wrapper to map window.crypto.subtle --> subtle (even in node.js)*/
 (function(
     exports, // <<< maps to window.stringDiffRegex / module.exports
     sha1,    // sha1 hash for integrity checks,
-    perf_now // performance timing tool
+    define
     ) {
+        
+        
+        if (!sha1) {
+            throw new Error("ouhie");
+        }
 
         // returns index of first different char
         // null - both strings are identical
@@ -398,18 +402,21 @@
         }
         
 
-        exports.utils = {
-            apply_diff : apply_diff,
-            diff       : diff,
-            sha1       : sha1,
-            asyncDiff  : asyncDiff,
-            perf_now   : perf_now(100)
-        };
+        define(function() {
+            exports.utils = {
+                        apply_diff : apply_diff,
+                        diff       : diff,
+                        asyncDiff  : asyncDiff,
+                        sha1       : sha1
+                    };
+            return exports;
+        });        
 
 /*node>>>*/
         if (isNodeJS) {
             (function(){            
                         const fs = require('fs');
+                        var crypto = require("crypto");
                         var pathlib = require("path");
                         var urllib = require("url");
                         var mime = require("mime");
@@ -493,7 +500,7 @@
                      
                      if (typeof filename!=='string' || filename==='/' || !filename.startsWith('/')) throw new Error("can't create path");
                      
-                     const dirname = path.dirname(filename);
+                     const dirname = pathlib.dirname(filename);
                      
                      const stat = fs.existsSync(filename)?fs.statSync(filename):undefined;
             
@@ -543,7 +550,7 @@
                      
                      if (typeof filename!=='string' || filename==='/' || !filename.startsWith('/')) return cb(new Error("can't create path"));
                      
-                     const dirname = path.dirname(filename);
+                     const dirname = pathlib.dirname(filename);
                      fs.stat(filename,function(err,stat){
                         
                         
@@ -568,14 +575,33 @@
                             
                      });
                  }
+                 
+                 
+                 function fs_writeFile(filename,data,cb){ 
+                     
+                     if (typeof filename+typeof cb==='stringfunction') {
+                         if (typeof data==='string'||Buffer.isBuffer(data)) {
+                             make_path_for(filename,function(err,dn,exists,isdir){
+                                 if (err) return cb(err);
+                                 if (isdir) {
+                                     return cb(new Error(filename+" exists and is a directory"));
+                                 }
+                                 return fs.writeFile(filename,data,cb);
+                             });
+                         }
+                     } 
+                     
+                     throw new Error ('incorrect argument types');
+                     
+                 }
                
                   function fs_statSync(filename,stat,realpath) {
                      
                     if (!stat) stat = fs.statSync(filename);
                     stat.realpath = realpath || fs.realpathSync(filename);
-                    stat.path = path.resolve(filename);
-                    stat.basename = path.basename(stat.path);
-                    stat.realbasename = path.basename(stat.realpath);
+                    stat.path = pathlib.resolve(filename);
+                    stat.basename = pathlib.basename(stat.path);
+                    stat.realbasename = pathlib.basename(stat.realpath);
                     stat.id_hash = crypto.createHash("sha1").update(filename).digest("hex");
                     stat.isSymbolicLink = function() {
                         return (stat.path!==stat.realpath);
@@ -829,17 +855,17 @@
                      */
                      
                      const ext = filename.substr(filename.lastIndxOf("."));
-                     const basename     = path.basename(filename);
-                     const dirname      = path.dirname(filename)
+                     const basename     = pathlib.basename(filename);
+                     const dirname      = pathlib.dirname(filename)
                      const file_hash    = crypto.createHash("sha1").update(data).digest("hex");
                      const prior_hash   = patch[3]; 
                      const full_replace = patch[0]==='*.';
                      if (!full_replace && file_hash!==patch[2]) {
                          return cb(new Error("patch supplied does not match data"));
                      }
-                     const current_version_link = path.join(dirname,"."+basename+'/current'+ext);
-                     const current_version_path = path.join(dirname,"."+basename+'/'+file_hash+ext);
-                     const current_patch_path   = path.join(dirname,"."+basename+'/'+prior_hash+'-'+file_hash+".json");
+                     const current_version_link = pathlib.join(dirname,"."+basename+'/current'+ext);
+                     const current_version_path = pathlib.join(dirname,"."+basename+'/'+file_hash+ext);
+                     const current_patch_path   = pathlib.join(dirname,"."+basename+'/'+prior_hash+'-'+file_hash+".json");
                      
                      var file_stat;
                      const create_current_link = function () {
@@ -858,7 +884,7 @@
                              filename,             /* this is the file we are writing "data"" to */
                              current_version_path, /* this is the file that's used to do the atomic write/swap */
                              data,                 /* this is the data being written to destFilename */
-                             hash,                 /* this is the hash of the data being written (optional, will hash it if not supplied )*/
+                             file_hash,          /* this is the hash of the data being written (optional, will hash it if not supplied )*/
                              true,                 /* forces transitFilename to persist after the operation, and it will contain whatever 
                                                  was in destfile before the process began (eg good for a backup file)*/
                              function (err, hash, hash_of_replaced, replaced, transithash, transitdata ) {
@@ -875,7 +901,7 @@
                                           
                                          if (transithash) {
                                              
-                                             const transit_version_path   = path.join(dirname,"."+basename+'/'+transithash+ext);
+                                             const transit_version_path   = pathlib.join(dirname,"."+basename+'/'+transithash+ext);
                                              
                                              fs.stat(transit_version_path,function(err,stat){
                                                  if (err) {
@@ -973,10 +999,9 @@
                    dir.listing = list.slice();
                    for (let i = 0; i < list.length; i++) {
                      if (i<list.length) {
-                         stat = fs.statSync(filePath + "/" + list[i]);
-                         if (stat.idisDirectory()){
+                         let stat = fs.statSync(dirname + "/" + list[i]);
+                         if (stat.isDirectory()){
                              list[i]+='/';
-                             getDirs(i+1);
                           }
                      } else {
                        
@@ -985,13 +1010,13 @@
                    return fs_dirObjListing(dirname, dir,list);
              }
                
-                function fs_dirObj(filename,data,dir,cb){
-                   fs.readdir(filename, function(err, list) {
+                function fs_dirObj(dirname,data,dir,cb){
+                   fs.readdir(dirname, function(err, list) {
                        dir.listing = list.slice();
                          const getDirs = function (i) {
                            if (i<list.length) {
-                                fs.stat(filePath + "/" + list[i],function(err,stat){
-                                    if (stat.idisDirectory());
+                                fs.stat(dirname + "/" + list[i],function(err,stat){
+                                    if (stat.isDirectory());
                                       list[i]+='/';
                                       getDirs(i+1);
                                 });
@@ -1134,9 +1159,9 @@
                                             }));
                                         
                                         } else {
-                                            sha1(server_data,function(server_hash){
+                                            sha1(overwrite_data,function(server_hash){
                                                 cache[id_hash] = {
-                                                    data:server_data,
+                                                    data:overwrite_data,
                                                     hash:server_hash
                                                 };
                                                 res.send(JSON.stringify({
@@ -1318,11 +1343,11 @@
                         var filepath = decodeURIComponent(urllib.parse(req.url).path);
                         filepath = pathlib.normalize(pathlib.join(ROOT, filepath));
                         
-                        if (filePath.indexOf(ROOT) !== 0) {
+                        if (filepath.indexOf(ROOT) !== 0) {
                             return error(res, 500, "Hack attempt?");
                         }
                         
-                        id_hash = crypto.createHash("sha1").update(filename).digest("hex"); 
+                        const id_hash = crypto.createHash("sha1").update(filepath).digest("hex"); 
                         
                         
                         switch (req.method) {
@@ -1347,7 +1372,7 @@
 
 })( /*exports*/       /*node>>>*/ isNodeJS ? module.exports :/*<<<node*/  (window.stringDiffRegex={}),
     /*sha1*/          /*node>>>*/ isNodeJS ? sha1Node ()  :/*<<<node*/    sha1Browser(),
-    /*perf_now*/      /*node>>>*/ isNodeJS ? perfNode     :/*<<<node*/    perfBrowser
+    /*define*/        /*node>>>*/ isNodeJS ? no_define     :/*<<<node*/    (typeof define==='function'?define:no_define)
 );
 
     function sha1SubtleBrowser() {
@@ -1391,8 +1416,10 @@
 
     }
     
-    function perfBrowser(sample_size) { return window.performance_now(true)(sample_size); }
-   
+    function no_define(fn){
+         fn();
+    }
+
 /*node>>>*/ 
     function sha1Node () {
         var crypto = require('crypto');
@@ -1404,7 +1431,6 @@
         };
     }
     
-    function perfNode   (sample_size) { return require("perf_now_time")(true)(sample_size); }
 /*<<<node*/     
  
 }
